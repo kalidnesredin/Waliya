@@ -244,17 +244,17 @@ async def approve_reject(update: Update, context):
     post_text = format_post(data)
     photos = row[2].split(',') if row[2] else []
     
-  targets = [MY_CHANNEL_ID, FRIEND_CHANNEL_ID, GROUP_ID]
-for target in targets:
-    if photos:
-        if len(photos) == 1:
-            await context.bot.send_photo(target, photos[0], caption=post_text, parse_mode='Markdown')
+    targets = [MY_CHANNEL_ID, FRIEND_CHANNEL_ID, GROUP_ID]
+    for target in targets:
+        if photos:
+            if len(photos) == 1:
+                await context.bot.send_photo(target, photos[0], caption=post_text, parse_mode='Markdown')
+            else:
+                media = [InputMediaPhoto(media=photo_id, caption=post_text if i == 0 else None, parse_mode='Markdown')
+                        for i, photo_id in enumerate(photos)]
+                await context.bot.send_media_group(target, media)
         else:
-            media = [InputMediaPhoto(media=photo_id, caption=post_text if i == 0 else None, parse_mode='Markdown')
-                     for i, photo_id in enumerate(photos)]
-            await context.bot.send_media_group(target, media)
-    else:
-        await context.bot.send_message(target, post_text, parse_mode='Markdown')
+            await context.bot.send_message(target, post_text, parse_mode='Markdown')
     
     cursor.execute('DELETE FROM pending WHERE id = ?', (post_id,))
     conn.commit()
