@@ -1,8 +1,11 @@
 import sqlite3
 import os
+import telegram
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ConversationHandler, filters
 
+
+print("Telegram version:", telegram.__version__)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [801355433, 309222693]  # Replace with your two admin Telegram USER IDs
 MY_CHANNEL_ID = '@waliyahousecar'  # e.g., '@cars_ethiopia' or -1001234567890
@@ -256,7 +259,7 @@ def main():
         entry_points=[CommandHandler('start', start)],
         states={
             PHOTOS: [
-                MessageHandler(filters.PHOTO | filters.DOCUMENT, photos),
+                MessageHandler(filters.PHOTO | filters.Document.ALL, photos),
                 CommandHandler('done', done_photos)
             ],
             MAKE: [MessageHandler(filters.TEXT & ~filters.COMMAND, make)],
