@@ -4,14 +4,12 @@ import telegram
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ConversationHandler, filters
 
-
 print("Telegram version:", telegram.__version__)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [801355433, 309222693]  # Replace with your two admin Telegram USER IDs
-MY_CHANNEL_ID = '@Bayracars'  # e.g., '@cars_ethiopia' or -1001234567890
-FRIEND_CHANNEL_ID = '@Bayracars'  # e.g., '@friend_cars' or -100xxxxxxxxxx
-GROUP_ID = '@waliya_12'      # Same for group
-# =========================
+MY_CHANNEL_ID = @Bayracars  # Replace with your numeric channel ID
+FRIEND_CHANNEL_ID = @Bayracars # Replace with your numeric friend channel ID
+GROUP_ID = @waliya_12  # Replace with your numeric group ID
 
 # Database
 conn = sqlite3.connect('pending_posts.db', check_same_thread=False)
@@ -20,7 +18,7 @@ cursor.execute('''
 CREATE TABLE IF NOT EXISTS pending (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
-    photos TEXT,  -- Comma-separated file_ids
+    photos TEXT,  
     make TEXT,
     model TEXT,
     year TEXT,
@@ -40,12 +38,14 @@ conn.commit()
 # Conversation states
 PHOTOS, MAKE, MODEL, YEAR, CONDITION, PLATE, TRANSMISSION, MILEAGE, COLOR, PRICE, DESCRIPTION, NEGOTIABLE, CONTACT = range(13)
 
+# ----------------------- BOT LOGIC -----------------------
+
 async def start(update: Update, context):
-    await update.message.reply_text(
-        "🚗 Welcome to the Car Listing Bot!\n\n"
-        "Send 3-10 photos of the car (you can send them all at once as an album).\n"
-        "Then type /done to continue."
-    )
+    if update.message:
+        await update.message.reply_text(
+            "🚗 Welcome to the Car Listing Bot!\n\n"
+            "Send 3-10 photos of the car (you can send them all at once as an album)."
+        )
     context.user_data['photos'] = []
     return PHOTOS
 
@@ -59,19 +59,24 @@ async def photos(update: Update, context):
     
     photo_count = len(context.user_data['photos'])
     if photo_count > 10:
-        await message.reply_text("Max 10 photos. Starting over.")
+        await update.message.reply_text("Max 10 photos. Starting over.")
         context.user_data['photos'] = []
         return PHOTOS
     
-    await message.reply_text(f"✅ {photo_count} photos received. Send more or type /done to continue.")
+    # Inline Done button
+    keyboard = [[InlineKeyboardButton("✅ Done", callback_data="done_photos")]]
+    await update.message.reply_text(f"✅ {photo_count} photos received. Send more or click Done.", 
+                                    reply_markup=InlineKeyboardMarkup(keyboard))
     return PHOTOS
 
-async def done_photos(update: Update, context):
+async def done_photos_callback(update: Update, context):
+    query = update.callback_query
+    await query.answer()
     photo_count = len(context.user_data.get('photos', []))
     if photo_count < 3:
-        await update.message.reply_text("❌ Need at least 3 photos. Send more and /done again.")
+        await query.edit_message_text("❌ Need at least 3 photos. Send more and click Done again.")
         return PHOTOS
-    await update.message.reply_text(f"✅ {photo_count} photos saved! What's the make of the car? (e.g., Toyota)")
+    await query.edit_message_text(f"✅ {photo_count} photos saved! What's the make of the car? (e.g., Toyota)")
     return MAKE
 
 async def make(update: Update, context):
@@ -90,42 +95,39 @@ async def year(update: Update, context):
         await update.message.reply_text("❌ Invalid year (1900-2026). Try again.")
         return YEAR
     context.user_data['year'] = year
+    
     keyboard = [
-        [InlineKeyboardButton("Used", callback_data="Used"), InlineKeyboardButton("Brand New", callback_data="Brand New")]
+        [
+            InlineKeyboardButton("1", callback_data="plate_1"),
+            InlineKeyboardButton("2", callback_data="plate_2"),
+            InlineKeyboardButton("3", callback_data="plate_3"),
+            InlineKeyboardButton("Brand New", callback_data="plate_brandnew")
+        ]
     ]
-    await update.message.reply_text("Used or Brand New?", reply_markup=InlineKeyboardMarkup(keyboard))
-    return CONDITION
-
-async def condition(update: Update, context):
-    query = update.callback_query
-    await query.answer()
-    context.user_data['condition'] = query.data
-    await query.edit_message_text(f"✅ Selected: {query.data}\n\nPlate code? (usually 1, 2, or 3)")
+    await update.message.reply_text("Select plate code or Brand New:", reply_markup=InlineKeyboardMarkup(keyboard))
     return PLATE
 
-async def plate(update: Update, context):
-    plate = update.message.text.strip()
-    if not plate.isdigit() or not (1 <= int(plate) <= 3):
-        await update.message.reply_text("❌ Plate code must be 1, 2, or 3. Try again.")
-        return PLATE
-    context.user_data['plate'] = plate
+async def plate_callback(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    context.user_data['plate'] = query.data.replace("plate_", "")
     keyboard = [
         [InlineKeyboardButton("Automatic", callback_data="Automatic"), InlineKeyboardButton("Manual", callback_data="Manual")]
     ]
-    await update.message.reply_text("Transmission type?", reply_markup=InlineKeyboardMarkup(keyboard))
+    await query.edit_message_text("Transmission type?", reply_markup=InlineKeyboardMarkup(keyboard))
     return TRANSMISSION
 
 async def transmission(update: Update, context):
     query = update.callback_query
     await query.answer()
     context.user_data['transmission'] = query.data
-    await query.edit_message_text(f"✅ Selected: {query.data}\n\nMileage? (e.g., 50000 km)")
+    await query.edit_message_text("Mileage? (e.g., 50,000 km)")
     return MILEAGE
 
 async def mileage(update: Update, context):
     mileage = update.message.text.strip()
-    if not mileage.replace(" km", "").replace(" ", "").isdigit():
-        await update.message.reply_text("❌ Invalid mileage. Use numbers (e.g., 50000).")
+    if not mileage.replace(" km", "").replace(",", "").replace(" ", "").isdigit():
+        await update.message.reply_text("❌ Invalid mileage. Use numbers (e.g., 50,000).")
         return MILEAGE
     context.user_data['mileage'] = mileage
     await update.message.reply_text("Color? (e.g., Red)")
@@ -133,16 +135,18 @@ async def mileage(update: Update, context):
 
 async def color(update: Update, context):
     context.user_data['color'] = update.message.text.strip()
-    await update.message.reply_text("Price? (e.g., 100000 ETB)")
+    await update.message.reply_text("Price? (e.g., 2,894,000 ETB)")
     return PRICE
 
 async def price(update: Update, context):
     price = update.message.text.strip()
-    if not price.replace(" ETB", "").replace(" ", "").isdigit():
-        await update.message.reply_text("❌ Invalid price. Use numbers (e.g., 100000).")
+    numeric_price = ''.join(filter(str.isdigit, price))
+    if not numeric_price.isdigit():
+        await update.message.reply_text("❌ Invalid price. Use numbers like 2,894,000.")
         return PRICE
-    context.user_data['price'] = price
-    await update.message.reply_text("Description? (optional, max 500 chars). Type 'skip' to skip.")
+    formatted_price = "{:,}".format(int(numeric_price))
+    context.user_data['price'] = formatted_price + " ETB"
+    await update.message.reply_text(f"Price recorded: {context.user_data['price']}\nDescription? (optional, max 500 chars). Type 'skip' to skip.")
     return DESCRIPTION
 
 async def description(update: Update, context):
@@ -151,9 +155,7 @@ async def description(update: Update, context):
         await update.message.reply_text("❌ Too long (max 500). Try again or 'skip'.")
         return DESCRIPTION
     context.user_data['description'] = desc if desc.lower() != 'skip' else ''
-    keyboard = [
-        [InlineKeyboardButton("Negotiable", callback_data="Negotiable"), InlineKeyboardButton("Fixed", callback_data="Fixed")]
-    ]
+    keyboard = [[InlineKeyboardButton("Negotiable", callback_data="Negotiable"), InlineKeyboardButton("Fixed", callback_data="Fixed")]]
     await update.message.reply_text("Is the price negotiable or fixed?", reply_markup=InlineKeyboardMarkup(keyboard))
     return NEGOTIABLE
 
@@ -161,28 +163,29 @@ async def negotiable(update: Update, context):
     query = update.callback_query
     await query.answer()
     context.user_data['negotiable'] = query.data
-    await query.edit_message_text(f"✅ Selected: {query.data}\n\nPhone number or Telegram username?")
+    await query.edit_message_text("Phone number or Telegram username?")
     return CONTACT
 
 async def contact(update: Update, context):
     context.user_data['contact'] = update.message.text.strip()
     data = context.user_data
     photos_str = ','.join(data['photos'])
+    
     cursor.execute('''
         INSERT INTO pending (user_id, photos, make, model, year, condition, plate_code, transmission, mileage, color, price, description, negotiable, contact)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (update.message.from_user.id, photos_str, data['make'], data['model'], data['year'], data['condition'], data['plate'], data['transmission'], data['mileage'], data['color'], data['price'], data['description'], data['negotiable'], data['contact']))
+    ''', (update.message.from_user.id, photos_str, data['make'], data['model'], data['year'], data.get('condition', ''), data.get('plate', ''), data.get('transmission', ''), data['mileage'], data['color'], data['price'], data['description'], data['negotiable'], data['contact']))
     conn.commit()
     post_id = cursor.lastrowid
+    
     await update.message.reply_text("✅ Your listing is submitted and pending approval by admins!")
     
-    # Send to BOTH admins
+    # Send to admins
     post_text = format_post(data, is_pending=True)
-    keyboard = [
-        [InlineKeyboardButton("✅ Approve", callback_data=f"approve_{post_id}"), 
-         InlineKeyboardButton("❌ Reject", callback_data=f"reject_{post_id}")]
-    ]
+    keyboard = [[InlineKeyboardButton("✅ Approve", callback_data=f"approve_{post_id}"),
+                 InlineKeyboardButton("❌ Reject", callback_data=f"reject_{post_id}")]]
     markup = InlineKeyboardMarkup(keyboard)
+    
     for admin_id in ADMIN_IDS:
         try:
             await context.bot.send_message(admin_id, post_text, reply_markup=markup)
@@ -195,9 +198,9 @@ def format_post(data, is_pending=False):
     desc = f"\n📝 Description: {data['description']}" if data['description'] else ''
     return (
         f"🚗 **{data['make']} {data['model']} ({data['year']})**\n"
-        f"🔹 Condition: {data['condition']}\n"
-        f"🔹 Plate Code: {data['plate']}\n"
-        f"🔹 Transmission: {data['transmission']}\n"
+        f"🔹 Condition: {data.get('condition','')}\n"
+        f"🔹 Plate Code: {data.get('plate','')}\n"
+        f"🔹 Transmission: {data.get('transmission','')}\n"
         f"🔹 Mileage: {data['mileage']}\n"
         f"🔹 Color: {data['color']}\n"
         f"💰 Price: {data['price']} ({data['negotiable']})\n"
@@ -233,7 +236,6 @@ async def approve_reject(update: Update, context):
     post_text = format_post(data)
     photos = row[2].split(',') if row[2] else []
     
-    # Post to both channels and the group
     targets = [MY_CHANNEL_ID, FRIEND_CHANNEL_ID, GROUP_ID]
     for target in targets:
         if photos:
@@ -246,27 +248,36 @@ async def approve_reject(update: Update, context):
     
     cursor.execute('DELETE FROM pending WHERE id = ?', (post_id,))
     conn.commit()
-    await query.edit_message_text("✅ Approved and posted to both channels & group!")
+    
+    # Admin prompt to post another car
+    keyboard = [[InlineKeyboardButton("Post Another Car", callback_data="post_another")]]
+    await context.bot.send_message(query.from_user.id, "✅ Approved and posted.\nWould you like to post another car?", 
+                                   reply_markup=InlineKeyboardMarkup(keyboard))
+    
+    await query.edit_message_text("✅ Approved and posted to channels & group!")
+
+async def post_another_callback(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    return await start(update, context)
 
 async def cancel(update: Update, context):
     await update.message.reply_text("❌ Listing cancelled.")
     return ConversationHandler.END
 
+# ----------------------- MAIN -----------------------
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
     
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
-            PHOTOS: [
-                MessageHandler(filters.PHOTO | filters.Document.ALL, photos),
-                CommandHandler('done', done_photos)
-            ],
+            PHOTOS: [MessageHandler(filters.PHOTO | filters.Document.ALL, photos),
+                     CallbackQueryHandler(done_photos_callback, pattern="^done_photos$")],
             MAKE: [MessageHandler(filters.TEXT & ~filters.COMMAND, make)],
             MODEL: [MessageHandler(filters.TEXT & ~filters.COMMAND, model)],
             YEAR: [MessageHandler(filters.TEXT & ~filters.COMMAND, year)],
-            CONDITION: [CallbackQueryHandler(condition)],
-            PLATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, plate)],
+            PLATE: [CallbackQueryHandler(plate_callback, pattern="^plate_")],
             TRANSMISSION: [CallbackQueryHandler(transmission)],
             MILEAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, mileage)],
             COLOR: [MessageHandler(filters.TEXT & ~filters.COMMAND, color)],
@@ -280,6 +291,7 @@ def main():
     
     app.add_handler(conv_handler)
     app.add_handler(CallbackQueryHandler(approve_reject, pattern='^(approve|reject)_'))
+    app.add_handler(CallbackQueryHandler(post_another_callback, pattern='^post_another$'))
     
     print("Bot is running...")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
