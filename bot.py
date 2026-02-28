@@ -7,9 +7,9 @@ from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQu
 print("Telegram version:", telegram.__version__)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [801355433, 309222693]  # Replace with your two admin Telegram USER IDs
-MY_CHANNEL_ID = '@Bayracars'  # Replace with your numeric channel ID
-FRIEND_CHANNEL_ID = '@Bayracars' # Replace with your numeric friend channel ID
-GROUP_ID = '@waliya_12'  # Replace with your numeric group ID
+MY_CHANNEL_ID = 'https://t.me/waliyahousecar'  # Replace with your numeric channel ID
+FRIEND_CHANNEL_ID = 'https://t.me/Bayracars' # Replace with your numeric friend channel ID
+GROUP_ID = 'https://t.me/waliya_12'  # Replace with your numeric group ID
 
 # Database
 conn = sqlite3.connect('pending_posts.db', check_same_thread=False)
