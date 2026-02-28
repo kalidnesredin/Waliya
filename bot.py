@@ -180,6 +180,14 @@ async def contact(update: Update, context):
     
     await update.message.reply_text("✅ Your listing is submitted and pending approval by admins!")
     
+    # User confirmation + post another car button
+keyboard_user = [[InlineKeyboardButton("🚗 Post Another Car", callback_data="post_another")]]
+await update.message.reply_text(
+    "✅ Your listing is submitted and pending approval by admins!\n"
+    "You can post another car if you want.",
+    reply_markup=InlineKeyboardMarkup(keyboard_user)
+)
+
     # Send to admins
     post_text = format_post(data, is_pending=True)
     keyboard = [[InlineKeyboardButton("✅ Approve", callback_data=f"approve_{post_id}"),
