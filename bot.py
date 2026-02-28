@@ -9,7 +9,7 @@ print("Telegram version:", telegram.__version__)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [801355433, 309222693]  # Replace with your two admin Telegram USER IDs
 MY_CHANNEL_ID = '@waliyahousecar'  # e.g., '@cars_ethiopia' or -1001234567890
-FRIEND_CHANNEL_ID = '@bayracars'  # e.g., '@friend_cars' or -100xxxxxxxxxx
+FRIEND_CHANNEL_ID = '1003788391716'  # e.g., '@friend_cars' or -100xxxxxxxxxx
 GROUP_ID = '@waliya_12'      # Same for group
 # =========================
 
