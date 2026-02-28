@@ -7,9 +7,9 @@ from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQu
 print("Telegram version:", telegram.__version__)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [801355433, 309222693]
-MY_CHANNEL_ID = 'https://t.me/waliyahousecar'
-FRIEND_CHANNEL_ID = 'https://t.me/Bayracars'
-GROUP_ID = 'https://t.me/waliya_12'
+MY_CHANNEL_ID = '@waliyahousecar'
+FRIEND_CHANNEL_ID = '@Bayracars'
+GROUP_ID = '@waliya_12'
 
 # Database
 conn = sqlite3.connect('pending_posts.db', check_same_thread=False)
