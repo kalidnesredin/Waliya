@@ -250,7 +250,7 @@ async def approve_reject(update: Update, context):
             if len(photos) == 1:
                 await context.bot.send_photo(target, photos[0], caption=post_text, parse_mode='Markdown')
             else:
-                media = [InputMediaPhoto(media=photo_id, caption=post_text if i == 0 else None, parse_mode='Markdown')
+                media = [InputMediaPhoto(media=photo_id, caption=post_text if i == 0 else None, parse_mode='MarkdownV2')
                         for i, photo_id in enumerate(photos)]
                 await context.bot.send_media_group(target, media)
         else:
