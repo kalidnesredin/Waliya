@@ -1,9 +1,9 @@
 import sqlite3
+import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ConversationHandler, filters
 
-# === YOUR SETTINGS HERE ===
-BOT_TOKEN = '8642382591:AAEhfm1rMLDhjzy39u8h4UCjh2kxna00J8A'  # From @BotFather
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [801355433, 309222693]  # Replace with your two admin Telegram USER IDs
 MY_CHANNEL_ID = '@waliyahousecar'  # e.g., '@cars_ethiopia' or -1001234567890
 FRIEND_CHANNEL_ID = '@bayracars'  # e.g., '@friend_cars' or -100xxxxxxxxxx
