@@ -208,38 +208,61 @@ def format_post(data, is_pending=False):
         f"📞 Contact: {data['contact']}\n\n"
         f"{'🔄 *Pending Admin Approval*' if is_pending else ''}"
     )
-async def contact(update: Update, context):
-    context.user_data['contact'] = update.message.text.strip()
-    data = context.user_data
-    photos_str = ','.join(data['photos'])
+
+async def approve_reject(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    action, post_id = query.data.split('_')
+    post_id = int(post_id)
     
-    # Save to database
-    cursor.execute('''
-        INSERT INTO pending (user_id, photos, make, model, year, condition, plate_code, transmission, mileage, color, price, description, negotiable, contact)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (update.message.from_user.id, photos_str, data['make'], data['model'], data['year'], data.get('condition', ''), data.get('plate', ''), data.get('transmission', ''), data['mileage'], data['color'], data['price'], data['description'], data['negotiable'], data['contact']))
+    cursor.execute('SELECT * FROM pending WHERE id = ?', (post_id,))
+    row = cursor.fetchone()
+    if not row:
+        await query.edit_message_text("❌ This post has already been processed by another admin.")
+        return
+    
+    if action == 'reject':
+        cursor.execute('DELETE FROM pending WHERE id = ?', (post_id,))
+        conn.commit()
+        await query.edit_message_text("❌ Rejected and removed.")
+        return
+    
+    # Approve
+    data = {
+        'make': row[3], 'model': row[4], 'year': row[5], 'condition': row[6], 'plate': row[7],
+        'transmission': row[8], 'mileage': row[9], 'color': row[10], 'price': row[11],
+        'description': row[12], 'negotiable': row[13], 'contact': row[14]
+    }
+    post_text = format_post(data)
+    photos = row[2].split(',') if row[2] else []
+    
+    targets = [MY_CHANNEL_ID, FRIEND_CHANNEL_ID, GROUP_ID]
+    for target in targets:
+        if photos:
+            media = [InputMediaPhoto(photo_id) for photo_id in photos]
+            media[0].caption = post_text
+            media[0].parse_mode = 'Markdown'
+            await context.bot.send_media_group(target, media)
+        else:
+            await context.bot.send_message(target, post_text, parse_mode='Markdown')
+    
+    cursor.execute('DELETE FROM pending WHERE id = ?', (post_id,))
     conn.commit()
-    post_id = cursor.lastrowid
     
-    # Notify admins
-    post_text = format_post(data, is_pending=True)
-    keyboard = [[InlineKeyboardButton("✅ Approve", callback_data=f"approve_{post_id}"),
-                 InlineKeyboardButton("❌ Reject", callback_data=f"reject_{post_id}")]]
-    markup = InlineKeyboardMarkup(keyboard)
+    # Admin prompt to post another car
+    keyboard = [[InlineKeyboardButton("Post Another Car", callback_data="post_another")]]
+    await context.bot.send_message(query.from_user.id, "✅ Approved and posted.\nWould you like to post another car?", 
+                                   reply_markup=InlineKeyboardMarkup(keyboard))
     
-    for admin_id in ADMIN_IDS:
-        try:
-            await context.bot.send_message(admin_id, post_text, reply_markup=markup)
-        except Exception as e:
-            print(f"Failed to notify admin {admin_id}: {e}")
-    
-    # ------------------- NEW: Prompt user to post another car immediately -------------------
-    user_keyboard = [[InlineKeyboardButton("Post Another Car", callback_data="post_another")]]
-    await update.message.reply_text(
-        "✅ Your listing is submitted and pending admin approval!\n\nWould you like to post another car?",
-        reply_markup=InlineKeyboardMarkup(user_keyboard)
-    )
-    
+    await query.edit_message_text("✅ Approved and posted to channels & group!")
+
+async def post_another_callback(update: Update, context):
+    query = update.callback_query
+    await query.answer()
+    return await start(update, context)
+
+async def cancel(update: Update, context):
+    await update.message.reply_text("❌ Listing cancelled.")
     return ConversationHandler.END
 
 # ----------------------- MAIN -----------------------
